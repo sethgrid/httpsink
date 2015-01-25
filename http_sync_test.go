@@ -121,3 +121,29 @@ func TestSyncRetrievalCapacity(t *testing.T) {
 		t.Errorf("incorrect status code. got %d, want %d", got, want)
 	}
 }
+
+func TestSetNextResponse(t *testing.T) {
+	hSync, _ := NewHTTPSink()
+	defer hSync.Close()
+
+	expectedBody := []byte(`{"key":"value"}`)
+	hSync.SetNextResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
+
+	go hSync.StartHTTP()
+	setURL := fmt.Sprintf("http://%s/some/url", hSync.Addr)
+	resp, err := http.Get(setURL)
+
+	if err != nil {
+		t.Errorf("unable to GET on set sync, %v", err)
+		return
+	}
+
+	if got, want := resp.StatusCode, http.StatusTeapot; got != want {
+		t.Errorf("incorrect status code. got %d, want %d", got, want)
+	}
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if got, want := string(body), string(expectedBody); got != want {
+		t.Errorf("incorrect response body. got %s, want %s", got, want)
+	}
+}

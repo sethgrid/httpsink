@@ -16,7 +16,8 @@ type HTTPSink struct {
 	Capacity int
 	Listener net.Listener
 
-	mux *http.ServeMux
+	mux          *http.ServeMux
+	nextResponse *SimpleResponseWriter
 
 	sync.Mutex
 	requests []*http.Request
@@ -55,6 +56,12 @@ func (s *HTTPSink) Close() error {
 	return s.Listener.Close()
 }
 
+// SetNextResponse takes in a pointer to an http.ResponseWriter
+// If nil, the sink will, sink will return its default response
+func (s *HTTPSink) SetNextResponse(w *SimpleResponseWriter) {
+	s.nextResponse = w
+}
+
 func (s *HTTPSink) setHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.Capacity != 0 && len(s.requests) < s.Capacity {
@@ -62,9 +69,17 @@ func (s *HTTPSink) setHandler() http.HandlerFunc {
 			s.requests = append(s.requests, r)
 			s.Unlock()
 
+			if s.nextResponse != nil {
+				for k, v := range s.nextResponse.Header {
+					w.Header().Add(k, v)
+				}
+				w.WriteHeader(s.nextResponse.StatusCode)
+				w.Write(s.nextResponse.Body)
+				return
+			}
+
 			w.WriteHeader(http.StatusCreated)
 			w.Write([]byte(fmt.Sprintf(`{"index":"%d"}`, len(s.requests))))
-
 			return
 		}
 		w.WriteHeader(http.StatusGone)
@@ -94,4 +109,11 @@ type SyncErrorResponse struct {
 
 func syncErr(msg string) SyncErrorResponse {
 	return SyncErrorResponse{msg}
+}
+
+// SimpleResponseWriter is used for faking the desired response
+type SimpleResponseWriter struct {
+	Header     map[string]string
+	StatusCode int
+	Body       []byte
 }
