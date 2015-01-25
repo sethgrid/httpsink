@@ -1,4 +1,4 @@
-package httpsync
+package httpsink
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestSyncRetrieval(t *testing.T) {
-	hSync, _ := NewHttpSync()
+	hSync, _ := NewHTTPSink()
 	defer hSync.Close()
 	go hSync.StartHTTP()
 	setURL := fmt.Sprintf("http://%s/some/url?some_key=some_value&some_other_key=some_other_value", hSync.Addr)
@@ -54,7 +54,7 @@ func TestSyncRetrieval(t *testing.T) {
 }
 
 func TestSyncRetrievalIndexError(t *testing.T) {
-	hSync, _ := NewHttpSync()
+	hSync, _ := NewHTTPSink()
 	defer hSync.Close()
 	go hSync.StartHTTP()
 	setURL := fmt.Sprintf("http://%s/some/url?some_key=some_value&some_other_key=some_other_value", hSync.Addr)
@@ -92,7 +92,7 @@ func TestSyncRetrievalIndexError(t *testing.T) {
 }
 
 func TestSyncRetrievalCapacity(t *testing.T) {
-	hSync, _ := NewHttpSync()
+	hSync, _ := NewHTTPSink()
 	defer hSync.Close()
 	hSync.Capacity = 1
 	go hSync.StartHTTP()
