@@ -9,8 +9,8 @@ Example:
 
 ```go
 func TestSomeCode(t *testing.T) {
-  // set up the sink (optionally set the port with the NewHTTPSinkOnAdder("localhost:8888"))
-  hSync, _ := NewHTTPSink()
+	// set up the sink (optionally set the port with the NewHTTPSinkOnAdder("localhost:8888"))
+	hSync, _ := NewHTTPSink()
 	defer hSync.Close()
 
 	expectedBody := []byte(`{"key":"value"}`)
