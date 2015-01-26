@@ -39,6 +39,7 @@ func TestSyncRetrieval(t *testing.T) {
 		t.Errorf("incorrect status code. got %d, want %d", got, want)
 	}
 
+	// json decode does not know how to handle request.Body (ReadCloser)
 	type requestMask struct {
 		*http.Request
 		Body interface{}
@@ -48,11 +49,6 @@ func TestSyncRetrieval(t *testing.T) {
 
 	err = json.NewDecoder(getResp.Body).Decode(&capturedRequest)
 	if err != nil {
-		// json decode does not know how to handle request.Body (ReadCloser)
-		// one solution is to provide http.Request as an embedded struct
-		// and use a custom Body that overrides http.Request.
-		// Alternatively, we could use something similar to simplejson to inspect
-		// the returned json
 		t.Errorf("response body decode error - %v", err)
 		t.Errorf("captured request - %+v", capturedRequest)
 	}
@@ -61,6 +57,7 @@ func TestSyncRetrieval(t *testing.T) {
 		t.Errorf("captured request url property should not be nil")
 		return
 	}
+
 	if !strings.Contains(capturedRequest.URL.RawQuery, "some_key=some_value") {
 		t.Errorf("captured request in sync did not capture proper query - %s", capturedRequest.URL.RawQuery)
 	}
