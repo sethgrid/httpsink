@@ -38,15 +38,21 @@ func TestSyncRetrieval(t *testing.T) {
 	}
 
 	capturedRequest := http.Request{}
-
 	err = json.NewDecoder(getResp.Body).Decode(&capturedRequest)
 	if err != nil {
-		// not sure what is going on here. It is
-		// populating the struct, but still complains
-		// about using a ReadCloser().
-		t.Log("response body decode error - %v", err, capturedRequest)
+		// json decode does not know how to handle request.Body (ReadCloser)
+		// one solution is to provide http.Request as an embedded struct
+		// and use a custom Body that overrides http.Request.
+		// Alternatively, we could use something similar to simplejson to inspect
+		// the returned json
+		t.Logf("response body decode error - %v", err)
+		t.Logf("captured request - %+v", capturedRequest)
 	}
 
+	if capturedRequest.URL == nil {
+		t.Errorf("captured request url property should not be nil")
+		return
+	}
 	if !strings.Contains(capturedRequest.URL.RawQuery, "some_key=some_value") {
 		t.Errorf("captured request in sync did not capture proper query - %s", capturedRequest.URL.RawQuery)
 	}
