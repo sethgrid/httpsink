@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -14,7 +15,8 @@ func TestSyncRetrieval(t *testing.T) {
 	defer hSync.Close()
 	go hSync.StartHTTP()
 	setURL := fmt.Sprintf("http://%s/some/url?some_key=some_value&some_other_key=some_other_value", hSync.Addr)
-	setResp, err := http.Get(setURL)
+	// setResp, err := http.Get(setURL)
+	setResp, err := http.PostForm(setURL, url.Values{"key": {"Value"}, "id": {"123"}})
 
 	if err != nil {
 		t.Errorf("unable to GET on set sync, %v", err)
@@ -37,7 +39,13 @@ func TestSyncRetrieval(t *testing.T) {
 		t.Errorf("incorrect status code. got %d, want %d", got, want)
 	}
 
-	capturedRequest := http.Request{}
+	type requestMask struct {
+		*http.Request
+		Body interface{}
+	}
+
+	capturedRequest := requestMask{}
+
 	err = json.NewDecoder(getResp.Body).Decode(&capturedRequest)
 	if err != nil {
 		// json decode does not know how to handle request.Body (ReadCloser)
@@ -45,8 +53,8 @@ func TestSyncRetrieval(t *testing.T) {
 		// and use a custom Body that overrides http.Request.
 		// Alternatively, we could use something similar to simplejson to inspect
 		// the returned json
-		t.Logf("response body decode error - %v", err)
-		t.Logf("captured request - %+v", capturedRequest)
+		t.Errorf("response body decode error - %v", err)
+		t.Errorf("captured request - %+v", capturedRequest)
 	}
 
 	if capturedRequest.URL == nil {
@@ -56,7 +64,6 @@ func TestSyncRetrieval(t *testing.T) {
 	if !strings.Contains(capturedRequest.URL.RawQuery, "some_key=some_value") {
 		t.Errorf("captured request in sync did not capture proper query - %s", capturedRequest.URL.RawQuery)
 	}
-
 }
 
 func TestSyncRetrievalIndexError(t *testing.T) {
