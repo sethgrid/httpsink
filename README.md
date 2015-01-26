@@ -39,6 +39,7 @@ func TestSomeCode(t *testing.T) {
 
 	// ignoring the error because http.Request.Body does not play well with json.Decode
 	// it works for this example, but you could also make a custom struct or use simplejson
+	// if using a custom struct, just embedd *http.Request and mask with a Body interface{} property
 	_ = json.NewDecoder(getResp.Body).Decode(&capturedRequest)
 
 	if !strings.Contains(capturedRequest.URL.RawQuery, "some_key=some_value") {
