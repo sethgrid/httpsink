@@ -13,16 +13,17 @@ func TestSomeCode(t *testing.T) {
 	hSync, _ := NewHTTPSink()
 	defer hSync.Close()
 
+	// set the behavior of the foreign API endpoint
 	expectedBody := []byte(`{"key":"value"}`)
 	hSync.SetNextResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
 	
-	// make call to your code that in-turn makes a call to an api
+	// make call to your code that in-turn makes a call to the foreign API endpoint
 	err := sendAPIRequest()
 	if err != nil{
 	  t.Errorf("error sending api request - %s", err)
 	}
 	
-	// optionaly verify that the foreign api got the right request if you like
+	// optionaly verify that the foreign API got the right request if you like
 	getURL := fmt.Sprintf("http://%s/get?idx=0", hSync.Addr)
 	getResp, _ := http.Get(getURL)
 
