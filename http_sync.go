@@ -82,6 +82,10 @@ func (s *HTTPSink) setHandler() http.HandlerFunc {
 			w.WriteHeader(http.StatusCreated)
 			w.Write([]byte(fmt.Sprintf(`{"index":"%d"}`, len(s.requests))))
 			return
+		} else if s.Capacity == 0 {
+			w.WriteHeader(s.Response.StatusCode)
+			w.Write(s.Response.Body)
+			return
 		}
 		w.WriteHeader(http.StatusGone)
 		msg := "http sync is at capacity and no longer taking requests"
