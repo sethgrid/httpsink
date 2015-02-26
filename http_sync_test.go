@@ -27,7 +27,7 @@ func TestSyncRetrieval(t *testing.T) {
 		t.Errorf("incorrect status code. got %d, want %d", got, want)
 	}
 
-	getURL := fmt.Sprintf("http://%s/get?idx=0", hSync.Addr)
+	getURL := fmt.Sprintf("http://%s/get?request_number=0", hSync.Addr)
 	getResp, err := http.Get(getURL)
 
 	if err != nil {
@@ -80,7 +80,7 @@ func TestSyncRetrievalIndexError(t *testing.T) {
 	}
 
 	// index of 1, but should be 0 indexed
-	getURL := fmt.Sprintf("http://%s/get?idx=1", hSync.Addr)
+	getURL := fmt.Sprintf("http://%s/get?request_number=1", hSync.Addr)
 	getResp, err := http.Get(getURL)
 
 	if err != nil {

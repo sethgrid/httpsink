@@ -28,7 +28,7 @@ func NewHTTPSink() (*HTTPSink, error) {
 	return NewHTTPSinkOnAddr("localhost:0")
 }
 
-// NewHTTPSinkOnAddr takes in an adder, such as localhost:0 and
+// NewHTTPSinkOnAddr takes in an addr, such as localhost:0 and
 // the returned HTTPSink allows you to run the http server
 func NewHTTPSinkOnAddr(addr string) (*HTTPSink, error) {
 	s := &HTTPSink{Capacity: 1000, mux: http.NewServeMux()}
@@ -90,10 +90,10 @@ func (s *HTTPSink) setHandler() http.HandlerFunc {
 
 func (s *HTTPSink) getHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		index, err := strconv.Atoi(r.FormValue("idx"))
+		index, err := strconv.Atoi(r.FormValue("request_number"))
 		if err != nil || len(s.requests) < index+1 {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(syncErr(fmt.Sprintf("idx value not valid (%s)", r.FormValue("idx"))))
+			json.NewEncoder(w).Encode(syncErr(fmt.Sprintf("request_number value not valid (%s)", r.FormValue("idx"))))
 			return
 		}
 
