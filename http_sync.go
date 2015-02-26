@@ -56,9 +56,9 @@ func (s *HTTPSink) Close() error {
 	return s.Listener.Close()
 }
 
-// SetNextResponse takes in a pointer to an http.ResponseWriter
+// SetResponse takes in a pointer to an http.ResponseWriter
 // If nil, the sink will, sink will return its default response
-func (s *HTTPSink) SetNextResponse(w *SimpleResponseWriter) {
+func (s *HTTPSink) SetResponse(w *SimpleResponseWriter) {
 	s.nextResponse = w
 }
 

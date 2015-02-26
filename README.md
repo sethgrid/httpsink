@@ -23,7 +23,7 @@ func TestSomeCode(t *testing.T) {
 
 	// set the behavior of the foreign API endpoint
 	expectedBody := []byte(`{"key":"value"}`)
-	hSync.SetNextResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
+	hSync.SetResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
 
 	// make call to your code that in-turn makes a call to the foreign API endpoint
 	err := sendAPIRequest()

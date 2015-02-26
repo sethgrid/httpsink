@@ -132,12 +132,12 @@ func TestSyncRetrievalCapacity(t *testing.T) {
 	}
 }
 
-func TestSetNextResponse(t *testing.T) {
+func TestSetResponse(t *testing.T) {
 	hSync, _ := NewHTTPSink()
 	defer hSync.Close()
 
 	expectedBody := []byte(`{"key":"value"}`)
-	hSync.SetNextResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
+	hSync.SetResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
 
 	go hSync.StartHTTP()
 	setURL := fmt.Sprintf("http://%s/some/url", hSync.Addr)
