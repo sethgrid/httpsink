@@ -16,8 +16,8 @@ type HTTPSink struct {
 	Capacity int
 	Listener net.Listener
 
-	mux          *http.ServeMux
-	nextResponse *SimpleResponseWriter
+	mux      *http.ServeMux
+	Response *SimpleResponseWriter
 
 	sync.Mutex
 	requests []*http.Request
@@ -59,7 +59,7 @@ func (s *HTTPSink) Close() error {
 // SetResponse takes in a pointer to an http.ResponseWriter
 // If nil, the sink will, sink will return its default response
 func (s *HTTPSink) SetResponse(w *SimpleResponseWriter) {
-	s.nextResponse = w
+	s.Response = w
 }
 
 func (s *HTTPSink) setHandler() http.HandlerFunc {
@@ -69,12 +69,12 @@ func (s *HTTPSink) setHandler() http.HandlerFunc {
 			s.requests = append(s.requests, r)
 			s.Unlock()
 
-			if s.nextResponse != nil {
-				for k, v := range s.nextResponse.Header {
+			if s.Response != nil {
+				for k, v := range s.Response.Header {
 					w.Header().Add(k, v)
 				}
-				w.WriteHeader(s.nextResponse.StatusCode)
-				w.Write(s.nextResponse.Body)
+				w.WriteHeader(s.Response.StatusCode)
+				w.Write(s.Response.Body)
 				return
 			}
 
