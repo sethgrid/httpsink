@@ -8,7 +8,7 @@ Using configuration or environment variables, you can set the foreign API endpoi
 ## Features
 
 - Set designed port or just use a random available port.
-- Inspect the requests that come into the sink via the sink `/get?idx=:request_number` endpoint where `request_number` is the zero-indexed request to come into the sink.
+- Inspect the requests that come into the sink via the sink `/get?request_number=:request_number` endpoint where `request_number` is the zero-indexed request to come into the sink.
 - Set the desired response from the sink.
 - Set a capacity for the total number of requests that the sink will allow before it rejects them.
 - Run multiple sinks at the same time.
@@ -24,15 +24,15 @@ func TestSomeCode(t *testing.T) {
 	// set the behavior of the foreign API endpoint
 	expectedBody := []byte(`{"key":"value"}`)
 	hSync.SetNextResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
-	
+
 	// make call to your code that in-turn makes a call to the foreign API endpoint
 	err := sendAPIRequest()
 	if err != nil{
 	  t.Errorf("error sending api request - %s", err)
 	}
-	
+
 	// optionaly verify that the foreign API got the right request if you like
-	getURL := fmt.Sprintf("http://%s/get?idx=0", hSync.Addr)
+	getURL := fmt.Sprintf("http://%s/get?request_number=0", hSync.Addr)
 	getResp, _ := http.Get(getURL)
 
 	capturedRequest := http.Request{}
