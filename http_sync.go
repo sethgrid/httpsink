@@ -25,13 +25,14 @@ type HTTPSink struct {
 
 // NewHTTPSink creates a sync running on :0 (random port)
 func NewHTTPSink() (*HTTPSink, error) {
-	return NewHTTPSinkOnAddr("localhost:0")
+	return NewHTTPSinkOnAddr("localhost:0", 1000)
 }
 
 // NewHTTPSinkOnAddr takes in an addr, such as localhost:0 and
 // the returned HTTPSink allows you to run the http server
-func NewHTTPSinkOnAddr(addr string) (*HTTPSink, error) {
-	s := &HTTPSink{Capacity: 1000, mux: http.NewServeMux()}
+// capacity is the max number of requests that httpsink will save
+func NewHTTPSinkOnAddr(addr string, capacity int) (*HTTPSink, error) {
+	s := &HTTPSink{Capacity: capacity, mux: http.NewServeMux()}
 	s.mux.HandleFunc("/get", s.getHandler())
 	s.mux.HandleFunc("/", s.setHandler())
 
