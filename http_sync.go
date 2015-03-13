@@ -65,6 +65,7 @@ func (s *HTTPSink) SetResponse(w *SimpleResponseWriter) {
 
 func (s *HTTPSink) setHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+                fmt.Printf("%v\n", r)
 		if s.Capacity != 0 && len(s.requests) < s.Capacity {
 			s.Lock()
 			s.requests = append(s.requests, r)
