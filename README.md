@@ -24,7 +24,13 @@ func TestSomeCode(t *testing.T) {
 	// set the behavior of the foreign API endpoint
 	expectedBody := []byte(`{"key":"value"}`)
 	hSync.SetResponse(&SimpleResponseWriter{StatusCode: http.StatusTeapot, Body: expectedBody})
-
+	
+	// Set the number of requests that you want to capture.
+	// If unset (ie, 0), the sync will never store results and always give back your default response.
+	// If set, the server will only accept at max that many requests before returning errors.
+	// Capacity must be set for httpsink to store the result for later retrieval. 
+	hSync.Capacity = 5
+	
 	// make call to your code that in-turn makes a call to the foreign API endpoint
 	err := sendAPIRequest()
 	if err != nil{
@@ -32,6 +38,7 @@ func TestSomeCode(t *testing.T) {
 	}
 
 	// optionaly verify that the foreign API got the right request if you like
+	// hSync.Capacity will have to have been set for this to work.
 	getURL := fmt.Sprintf("http://%s/get?request_number=0", hSync.Addr)
 	getResp, _ := http.Get(getURL)
 	defer getResp.Body.Close()
