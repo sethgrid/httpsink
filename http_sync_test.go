@@ -1,11 +1,13 @@
 package httpsink
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -155,5 +157,57 @@ func TestSetResponse(t *testing.T) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	if got, want := string(body), string(expectedBody); got != want {
 		t.Errorf("incorrect response body. got %s, want %s", got, want)
+	}
+}
+
+func TestClearRequests(t *testing.T) {
+	hSync, _ := NewHTTPSink()
+	defer hSync.Close()
+	hSync.Capacity = 1
+	go hSync.StartHTTP()
+
+	// clear requests
+	clearURL := fmt.Sprintf("http://%s/clear", hSync.Addr)
+	clearResp, err := http.Get(clearURL)
+
+	if err != nil {
+		t.Errorf("unable to clear requests, %v", err)
+		return
+	}
+
+	if got, want := clearResp.StatusCode, http.StatusNoContent; got != want {
+		t.Errorf("incorrect status code. got %d, want %d", got, want)
+	}
+}
+
+func TestReturnBodyOnly(t *testing.T) {
+	hSync, _ := NewHTTPSink()
+	defer hSync.Close()
+	hSync.Capacity = 1
+	hSync.BodyOnly = true
+	go hSync.StartHTTP()
+
+	data := url.Values{"test": {"body only"}}
+	setStr := fmt.Sprintf("http://%s/something", hSync.Addr)
+
+	client := &http.Client{}
+	r, _ := http.NewRequest("GET", setStr, bytes.NewBufferString(data.Encode()))
+	_, err := client.Do(r)
+	if err != nil {
+		t.Errorf("fail to call set %v", err)
+		return
+	}
+
+	getURL := fmt.Sprintf("http://%s/get?request_number=0", hSync.Addr)
+	getResp, err := http.Get(getURL)
+	if err != nil {
+		t.Errorf("fail to call get %v", err)
+		return
+	}
+	body, _ := ioutil.ReadAll(getResp.Body)
+
+	regex, _ := regexp.Compile("body")
+	if !regex.MatchString(string(body)) {
+		t.Errorf("Expected body to contain 'body' but got %s", string(body))
 	}
 }

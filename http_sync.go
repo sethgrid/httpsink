@@ -3,6 +3,7 @@ package httpsink
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 type HTTPSink struct {
 	Addr     string
 	Capacity int
+	BodyOnly bool
 	Listener net.Listener
 
 	mux      *http.ServeMux
@@ -21,6 +23,7 @@ type HTTPSink struct {
 
 	sync.Mutex
 	requests []*http.Request
+	body     []string
 }
 
 // NewHTTPSink creates a sync running on :0 (random port)
@@ -34,6 +37,7 @@ func NewHTTPSink() (*HTTPSink, error) {
 func NewHTTPSinkOnAddr(addr string, capacity int) (*HTTPSink, error) {
 	s := &HTTPSink{Capacity: capacity, mux: http.NewServeMux()}
 	s.mux.HandleFunc("/get", s.getHandler())
+	s.mux.HandleFunc("/clear", s.clearHandler())
 	s.mux.HandleFunc("/", s.setHandler())
 
 	var err error
@@ -68,6 +72,9 @@ func (s *HTTPSink) setHandler() http.HandlerFunc {
 		if s.Capacity != 0 && len(s.requests) < s.Capacity {
 			s.Lock()
 			s.requests = append(s.requests, r)
+
+			data, _ := ioutil.ReadAll(r.Body)
+			s.body = append(s.body, string(data))
 			s.Unlock()
 
 			if s.Response != nil {
@@ -102,7 +109,19 @@ func (s *HTTPSink) getHandler() http.HandlerFunc {
 			return
 		}
 
-		json.NewEncoder(w).Encode(s.requests[index])
+		if s.BodyOnly {
+			json.NewEncoder(w).Encode(s.body[index])
+		} else {
+			json.NewEncoder(w).Encode(s.requests[index])
+		}
+	}
+}
+
+func (s *HTTPSink) clearHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.requests = nil
+		s.body = nil
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
