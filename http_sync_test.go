@@ -14,6 +14,7 @@ import (
 
 func TestSyncRetrieval(t *testing.T) {
 	hSync, _ := NewHTTPSink()
+	hSync.Capacity = 10
 	defer hSync.Close()
 	go hSync.StartHTTP()
 	setURL := fmt.Sprintf("http://%s/some/url?some_key=some_value&some_other_key=some_other_value", hSync.Addr)
@@ -39,12 +40,6 @@ func TestSyncRetrieval(t *testing.T) {
 
 	if got, want := getResp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("incorrect status code. got %d, want %d", got, want)
-	}
-
-	// json decode does not know how to handle request.Body (ReadCloser)
-	type requestMask struct {
-		*http.Request
-		Body interface{}
 	}
 
 	capturedRequest := requestMask{}
@@ -96,7 +91,7 @@ func TestSyncRetrievalIndexError(t *testing.T) {
 
 	resp, err := ioutil.ReadAll(getResp.Body)
 	if err != nil {
-		t.Errorf("response body read error", err)
+		t.Error("response body read error", err)
 	}
 	if !strings.Contains(string(resp), "not valid") {
 		t.Errorf("invalid response content. got '%v', want something with 'not valid'", string(resp))

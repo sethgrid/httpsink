@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -71,10 +72,10 @@ func (s *HTTPSink) setHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.Capacity != 0 && len(s.requests) < s.Capacity {
 			s.Lock()
-			s.requests = append(s.requests, r)
-
 			data, _ := ioutil.ReadAll(r.Body)
 			s.body = append(s.body, string(data))
+
+			s.requests = append(s.requests, r)
 			s.Unlock()
 
 			if s.Response != nil {
@@ -112,15 +113,29 @@ func (s *HTTPSink) getHandler() http.HandlerFunc {
 		if s.BodyOnly {
 			json.NewEncoder(w).Encode(s.body[index])
 		} else {
-			json.NewEncoder(w).Encode(s.requests[index])
+			req := s.requests[index]
+
+			rmask := requestMask{req, s.body[index], nil}
+			err = json.NewEncoder(w).Encode(rmask)
+			if err != nil {
+				log.Println("httpsink error encoding request mask", err)
+			}
 		}
 	}
 }
 
+// json decode does not know how to handle request.Body (ReadCloser) so provide a string.
+// also, marshal cannot handle channels, so change the Cancel to something else
+type requestMask struct {
+	*http.Request
+	Body   string
+	Cancel interface{}
+}
+
 func (s *HTTPSink) clearHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.requests = nil
-		s.body = nil
+		s.requests = make([]*http.Request, 0)
+		s.body = make([]string, 0)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
