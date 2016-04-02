@@ -45,7 +45,9 @@ func TestSomeCode(t *testing.T) {
 	getResp, _ := http.Get(getURL)
 	defer getResp.Body.Close()
 
-	capturedRequest := http.Request{}
+    // cannot marshal into http.Request due to Body being a ReadCloser()
+    // hSync.RequestMask allows us to get access to the Body
+	capturedRequest := hSync.RequestMask{}
 
 	// ignoring the error because http.Request.Body does not play well with json.Decode
 	// it works for this example, but you could also make a custom struct or use simplejson
@@ -66,4 +68,10 @@ func TestSomeCode(t *testing.T) {
 	bodyResp, _ := http.Get(getURL)
 	defer bodyResp.Body.Close()
 }
+```
+
+The response that come back from captured responses at `http://$hSync.Addr/get?request_number=x` will look like the following, and can be marshalled into `httpsink.RequestMask{}`:
+```
+{"Method":"POST","URL":{"Scheme":"","Opaque":"","User":null,"Host":"","Path":"/some/url","RawPath":"","RawQuery":"some_key=some_value\u0026some_other_key=some_other_value","Fragment":""},"Proto":"HTTP/1.1","ProtoMajor":1,"ProtoMinor":1,"Header":{"Accept-Encoding":["gzip"],"Content-Length":["16"],"Content-Type":["application/x-www-form-urlencoded"],"User-Agent":["Go-http-client/1.1"]},"ContentLength":16,"TransferEncoding":null,"Close":false,"Host":"127.0.0.1:55987","Form":null,"PostForm":null,"MultipartForm":null,"Trailer":null,"RemoteAddr":"127.0.0.1:55988","RequestURI":"/some/url?some_key=some_value\u0026some_other_key=some_other_value","TLS":null,"Body":"id=123\u0026key=Value","Cancel":null}
+
 ```

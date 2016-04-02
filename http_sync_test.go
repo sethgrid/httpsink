@@ -42,7 +42,7 @@ func TestSyncRetrieval(t *testing.T) {
 		t.Errorf("incorrect status code. got %d, want %d", got, want)
 	}
 
-	capturedRequest := requestMask{}
+	capturedRequest := RequestMask{}
 
 	err = json.NewDecoder(getResp.Body).Decode(&capturedRequest)
 	if err != nil {

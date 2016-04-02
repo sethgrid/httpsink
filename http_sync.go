@@ -115,7 +115,7 @@ func (s *HTTPSink) getHandler() http.HandlerFunc {
 		} else {
 			req := s.requests[index]
 
-			rmask := requestMask{req, s.body[index], nil}
+			rmask := RequestMask{req, s.body[index], nil}
 			err = json.NewEncoder(w).Encode(rmask)
 			if err != nil {
 				log.Println("httpsink error encoding request mask", err)
@@ -124,9 +124,9 @@ func (s *HTTPSink) getHandler() http.HandlerFunc {
 	}
 }
 
-// json decode does not know how to handle request.Body (ReadCloser) so provide a string.
+// RequestMask allows us to get around the fact that json decode does not know how to handle request.Body (ReadCloser) so we provide a string.
 // also, marshal cannot handle channels, so change the Cancel to something else
-type requestMask struct {
+type RequestMask struct {
 	*http.Request
 	Body   string
 	Cancel interface{}
