@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+set -x
+
+echo -n "Testing with "
+go version
+
+echo "Running go test in $PWD with GOPATH=$GOPATH"
+go list ./... | grep -v /vendor/ | xargs go test -parallel=2 -covermode=atomic -timeout=10s -race
+
+echo
+echo "Running go vet in $PWD"
+go list ./... | grep -v /vendor/ | xargs go vet
+echo "go vet complete"
