@@ -45,6 +45,8 @@ func (s *Server) ListenAndServeTLS(certFile, keyFile string) error {
 }
 
 func (s *Server) setHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Add("Content-Type", "application/json")
+
 	defer s.mutex.Unlock()
 
 	s.mutex.Lock()
@@ -77,6 +79,8 @@ func (s *Server) setHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Add("Content-Type", "application/json")
+
 	// index starts at 1
 	index, err := strconv.Atoi(mux.Vars(r)["index"])
 	log.Printf("getting index %d", index)
@@ -98,6 +102,8 @@ func (s *Server) getHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) lastHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Add("Content-Type", "application/json")
+
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -117,6 +123,8 @@ func (s *Server) lastHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) clearHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Add("Content-Type", "application/json")
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -127,17 +135,20 @@ func (s *Server) clearHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) healthcheck(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Add("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) initializeRouter() {
 	router := mux.NewRouter()
-	router.HandleFunc("/", s.setHandler)
 	router.HandleFunc("/requests", s.clearHandler).Methods("DELETE")
 	router.HandleFunc("/requests", s.getHandler).Methods("GET")
 	router.HandleFunc("/requests/last", s.lastHandler).Methods("GET")
 	router.HandleFunc("/request/{index}", s.getHandler).Methods("GET")
 	router.HandleFunc("/healthcheck", s.healthcheck).Methods("GET")
+
+	// any other routes get handled here
+	router.NotFoundHandler = http.HandlerFunc(s.setHandler)
 
 	s.Server.Handler = router
 }

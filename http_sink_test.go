@@ -33,7 +33,7 @@ func TestSink(t *testing.T) {
 
 	// insert 10 items
 	for i := 1; i <= 10; i++ {
-		r, err := http.NewRequest("POST", fmt.Sprintf("http://%s/", addr), strings.NewReader("hello!"))
+		r, err := http.NewRequest("POST", fmt.Sprintf("http://%s/blah/something", addr), strings.NewReader("hello!"))
 		require.NoError(t, err)
 		r.Header.Add("X-Test", fmt.Sprintf("index %d", i))
 
@@ -55,7 +55,7 @@ func TestSink(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "POST", request.Method)
-	assert.Equal(t, "/", request.URL)
+	assert.Equal(t, "/blah/something", request.URL)
 	assert.Equal(t, "hello!", string(request.Body))
 	assert.Equal(t, []string{"index 1"}, request.Headers["X-Test"])
 
@@ -72,7 +72,7 @@ func TestSink(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "POST", request.Method)
-	assert.Equal(t, "/", request.URL)
+	assert.Equal(t, "/blah/something", request.URL)
 	assert.Equal(t, "hello!", string(request.Body))
 	assert.Equal(t, []string{"index 10"}, request.Headers["X-Test"])
 
