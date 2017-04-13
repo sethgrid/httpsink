@@ -9,6 +9,6 @@ docker build --pull --tag $IMAGE .
 docker run --rm $IMAGE ./bin/test
 
 if [[ "$PUBLISH" == "1" ]]; then
-  docker tag --force $IMAGE $IMAGE:latest
+  docker tag $IMAGE $IMAGE:latest
   docker push $IMAGE:latest
 fi
