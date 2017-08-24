@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -x
+set -e
+
+echo -n "Building with "
+go version
+
+BUILDDIR=build
+
+rm -rfv $BUILDDIR
+mkdir -p $BUILDDIR
+
+BIN="$BUILDDIR/httpsink"
+
+go build -v \
+  -o $BIN \
+  ./cmd/httpsink

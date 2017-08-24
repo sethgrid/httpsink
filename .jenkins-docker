@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+PROJECT_DIR=/opt/go/src/github.com/sendgrid/httpsink
+IMAGE=docker.sendgrid.net/sendgrid/httpsink
+
+docker build --pull --tag $IMAGE .
+
+docker run --rm $IMAGE ./bin/test
+
+if [[ "$PUBLISH" == "1" ]]; then
+  docker tag $IMAGE $IMAGE:latest
+  docker push $IMAGE:latest
+fi
