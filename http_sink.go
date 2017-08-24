@@ -3,12 +3,16 @@ package httpsink
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -19,9 +23,12 @@ var Logger = log.New(os.Stderr, "[httpsink] ", log.LstdFlags)
 type Server struct {
 	*http.Server
 	Capacity int
+	Proxy    string
+	TTL      time.Duration
 
 	mutex    sync.RWMutex
 	requests []Request
+	timer    *time.Timer
 }
 
 // New creates a sync running on :0 (random port)
@@ -61,21 +68,57 @@ func (s *Server) setHandler(rw http.ResponseWriter, r *http.Request) {
 
 	buf := bytes.NewBuffer(nil)
 	if r.Body != nil {
-		io.Copy(buf, r.Body)
-		defer r.Body.Close()
+		body := r.Body
+		io.Copy(buf, body)
+		r.Body = ioutil.NopCloser(buf)
+
+		defer body.Close()
 	}
 
 	req := Request{
-		URL:     r.URL.String(),
-		Method:  r.Method,
-		Body:    buf.Bytes(),
-		Headers: map[string][]string(r.Header),
+		URL:        r.URL.String(),
+		Method:     r.Method,
+		Body:       buf.Bytes(),
+		Headers:    map[string][]string(r.Header),
+		timestamp:  time.Now(),
+		recipients: mailRecipients(r),
 	}
 
 	Logger.Printf("storing request %d", len(s.requests)+1)
 	s.requests = append(s.requests, req)
 
-	rw.WriteHeader(http.StatusNoContent)
+	if s.Proxy != "" {
+		go s.proxy(s.Proxy, r)
+	}
+
+	rw.Write([]byte(`{"message":"success"}`))
+}
+
+func (s *Server) proxy(proxy string, r *http.Request) {
+	path := r.URL.Path
+	if r.URL.RawQuery != "" {
+		path = fmt.Sprintf("%s?%s", path, r.URL.RawQuery)
+	}
+
+	url := proxy + path
+
+	buf := bytes.NewBuffer(nil)
+	io.Copy(buf, r.Body)
+	defer r.Body.Close()
+
+	outgoing, _ := http.NewRequest(r.Method, url, buf)
+
+	for k, v := range r.Header {
+		outgoing.Header[k] = v
+	}
+
+	res, err := http.DefaultClient.Do(outgoing)
+	if err != nil {
+		Logger.Printf("proxy error: %s", err)
+		return
+	}
+
+	Logger.Printf("proxy response status code: %d", res.StatusCode)
 }
 
 func (s *Server) getHandler(rw http.ResponseWriter, r *http.Request) {
@@ -122,6 +165,36 @@ func (s *Server) lastHandler(rw http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(rw).Encode(s.requests[index-1])
 }
 
+func (s *Server) recipientHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Add("Content-Type", "application/json")
+
+	email := mux.Vars(r)["recipient"]
+	if email == "" {
+		http.Error(rw, `{"errors":[{"message":"missing recipient"}]}`, http.StatusBadRequest)
+		return
+	}
+
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	requests := make([]Request, 0)
+
+	for _, req := range s.requests {
+		for _, recipient := range req.recipients {
+			if strings.EqualFold(email, recipient) {
+				requests = append(requests, req)
+				break
+			}
+		}
+	}
+
+	type RecipeintResponse struct {
+		Requests []Request `json:"requests"`
+	}
+
+	json.NewEncoder(rw).Encode(RecipeintResponse{Requests: requests})
+}
+
 func (s *Server) clearHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Add("Content-Type", "application/json")
 
@@ -144,6 +217,7 @@ func (s *Server) initializeRouter() {
 	router.HandleFunc("/requests", s.clearHandler).Methods("DELETE")
 	router.HandleFunc("/requests", s.getHandler).Methods("GET")
 	router.HandleFunc("/requests/last", s.lastHandler).Methods("GET")
+	router.HandleFunc("/requests/recipient/{recipient}", s.recipientHandler).Methods("GET")
 	router.HandleFunc("/request/{index}", s.getHandler).Methods("GET")
 	router.HandleFunc("/healthcheck", s.healthcheck).Methods("GET")
 
@@ -151,6 +225,24 @@ func (s *Server) initializeRouter() {
 	router.NotFoundHandler = http.HandlerFunc(s.setHandler)
 
 	s.Server.Handler = router
+
+	s.timer = time.AfterFunc(time.Second, s.clearOldRequests)
+}
+
+func (s *Server) clearOldRequests() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.TTL > 0 {
+		now := time.Now()
+
+		for i := len(s.requests); i >= 0; i-- {
+			d := s.requests[i].timestamp.Sub(now)
+			if d > s.TTL {
+				s.requests = append(s.requests[:i], s.requests[i+1:]...)
+			}
+		}
+	}
 }
 
 type Request struct {
@@ -158,4 +250,52 @@ type Request struct {
 	Method  string              `json:"method"`
 	Body    []byte              `json:"body"`
 	Headers map[string][]string `json:"headers"`
+
+	recipients []string
+	timestamp  time.Time
+}
+
+func mailRecipients(r *http.Request) []string {
+	type XSMTPAPIHeader struct {
+		To               []string `json:"to"` // v2 header
+		Personalizations []struct {
+			To []struct {
+				Email string `json:"email"`
+			} `json:"to"`
+		} `json:"personalizations"` // v3 header
+	}
+
+	recipients := make([]string, 0)
+
+	to := r.URL.Query().Get("to") // v2 to URL param
+	if to != "" {
+		recipients = append(recipients, to)
+	}
+
+	tos, ok := r.URL.Query()["to[]"]
+	if ok {
+		recipients = append(recipients, tos...)
+	}
+
+	header := r.Header.Get("x-smtpapi")
+	if header != "" {
+		data := XSMTPAPIHeader{}
+		err := json.Unmarshal([]byte(header), &data)
+		if err != nil {
+			Logger.Printf("invalid x-smptapi header: %s", err)
+			return recipients
+		}
+
+		if data.To != nil {
+			recipients = append(recipients, data.To...)
+		}
+
+		for _, p := range data.Personalizations {
+			for _, to := range p.To {
+				recipients = append(recipients, to.Email)
+			}
+		}
+	}
+
+	return recipients
 }

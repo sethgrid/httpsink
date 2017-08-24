@@ -7,8 +7,11 @@ RUN ["bin/test"]
 RUN ["bin/build"]
 
 ENV HTTPSINK_PORT=50111\
-  HTTPSINK_INTERFACE=0.0.0.0
+  HTTPSINK_HOST=0.0.0.0\
+  HTTPSINK_CAPACITY=0\
+  HTTPSINK_PROXY=\
+  HTTPSINK_TTL=5m
 
-EXPOSE 50111
+EXPOSE $HTTPSINK_PORT
 
-CMD ["./build/httpsink"]
+CMD ["./build/httpsink", "--port=$HTTPSINK_PORT", "--host=$HTTPSINK_HOST", "--capacity=$HTTPSINK_CAPACITY", "--proxy=$HTTPSINK_PROXY", "--ttl=$HTTPSINK_TTL"]

@@ -14,4 +14,4 @@ BIN="$BUILDDIR/httpsink"
 
 go build -v \
   -o $BIN \
-  ./main
+  ./cmd/httpsink
